@@ -71,6 +71,8 @@ python -B -m unittest discover -s tests -v
 
 Run `python -B -m src.figures` to regenerate the face grid. Command-line options are available through `--help`.
 
+After the main experiments, run `python -B -m src.selected_validation_figure` to reproduce the dimension-comparison figure with the selected PCA→LDA m=40 curve; the original m=200 results remain preserved.
+
 For the [focused validation error analysis](results/classification_error_analysis.md), run `python -B -m src.error_analysis`; it reproduces the [two-case comparison](figures/classification_error_comparison.png) and a CSV of selected-method predictions.
 
 ## References
