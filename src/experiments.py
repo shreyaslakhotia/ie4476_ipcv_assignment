@@ -1,4 +1,4 @@
-"""Validation comparisons and weighted-SPCA extension; no test evaluation."""
+"""Validation comparisons and SPCA/Haar extensions; no test evaluation."""
 
 import argparse
 import csv
@@ -19,6 +19,7 @@ LDA_DIMENSIONS = (1, 2, 5, 10, 15, 20, 25, 30, 35, 39)
 METHODS = ('Unreduced', 'PCA', 'Direct ridge LDA', 'PCA→LDA')
 DEFAULT_EXPERIMENT_OUTPUT = Path(__file__).resolve().parents[1]
 SPCA_WEIGHTS = (1, 2, 5, 10)
+DWT_LEVELS = (1, 2, 3, 4)
 
 
 def _array_digest(array):
@@ -308,15 +309,144 @@ def run_spca(data_root=DEFAULT_ROOT, split_file=DEFAULT_OUTPUT/'split_indices.js
     return analysis
 
 
+def evaluate_dwt(train, validation, previous_summary):
+    """Evaluate only the fixed four Haar-LL levels with the approved 1-NN."""
+    from .wavelets import HaarDWT
+    import pywt
+    X, y, V, truth = train['X'], train['y'], validation['X'], validation['y']
+    if X.shape != (240, 10304) or V.shape != (80, 10304):
+        raise ValueError('Expected the approved ORL 240/80 feature matrices')
+    for part, name in ((train, 'training'), (validation, 'validation')):
+        if (_array_digest(part['X']) != previous_summary[f'{name}_features_sha256']
+                or part['indices'].tolist() != previous_summary[f'{name}_indices']):
+            raise ValueError(f'{name} differs from approved validation experiment observations')
+    if np.intersect1d(train['indices'], validation['indices']).size:
+        raise ValueError('Training and validation overlap')
+    before = tuple(_array_digest(a) for a in (X, y, V, truth))
+    rows, predictions = [], {}
+    for level in DWT_LEVELS:
+        extractor = HaarDWT(level)
+        state = vars(extractor).copy()
+        Z, ZV = extractor.transform(X), extractor.transform(V)
+        if Z.shape[0] != 240 or ZV.shape != (80, Z.shape[1]) or not np.isfinite(Z).all() or not np.isfinite(ZV).all():
+            raise RuntimeError('Invalid DWT feature shape/values')
+        shape = extractor.approximation(X[:1]).shape[1:]
+        if Z.shape[1] != int(np.prod(shape)):
+            raise RuntimeError('DWT flattening/geometry mismatch')
+        prediction = Euclidean1NN().fit(Z, y).predict(ZV)
+        metrics = classification_metrics(truth, prediction)
+        rows.append(dict(level=level, wavelet=extractor.wavelet, boundary_mode=extractor.mode,
+                         pywavelets_runtime_version=pywt.__version__, pywavelets_distribution_version=version('PyWavelets'),
+                         ll_height=shape[0], ll_width=shape[1], retained_dimension=Z.shape[1],
+                         feature_reduction_fraction=1-Z.shape[1]/X.shape[1],
+                         validation_accuracy=metrics['accuracy'], error_rate=metrics['error_rate'],
+                         n_correct=metrics['n_correct'], n_validation=metrics['n_samples'],
+                         prediction_sha256=_array_digest(prediction.astype('<i8'))))
+        predictions[level] = prediction
+        if vars(extractor) != state:
+            raise RuntimeError('DWT extraction changed parameters')
+        print(f'Haar LL level={level}: shape={shape}, d={Z.shape[1]}, '
+              f'{metrics["n_correct"]}/80 = {metrics["accuracy"]:.2%}')
+    if before != tuple(_array_digest(a) for a in (X, y, V, truth)):
+        raise RuntimeError('DWT extension modified input observations')
+    return dict(rows=rows, predictions=predictions)
+
+
+def plot_dwt(analysis, previous_rows, train, output):
+    """Two report figures; only the multiresolution display rescales LL values."""
+    import matplotlib
+    matplotlib.use('Agg')
+    import matplotlib.pyplot as plt
+    from .wavelets import HaarDWT
+    output.mkdir(parents=True, exist_ok=True)
+    baseline = next(r for r in previous_rows if r['method'] == 'Unreduced')
+    pca = [r for r in previous_rows if r['method'] == 'PCA']
+    with plt.rc_context({'font.size': 10, 'axes.spines.top': False, 'axes.spines.right': False, 'pdf.fonttype': 42}):
+        fig, ax = plt.subplots(figsize=(7, 3.8), layout='constrained')
+        ax.scatter([r['retained_dimension'] for r in pca], [r['validation_accuracy']*100 for r in pca],
+                   s=40, marker='o', facecolors='none', edgecolors='#0072B2', label='PCA: measured d=1–239')
+        ax.scatter([r['retained_dimension'] for r in analysis['rows']],
+                   [r['validation_accuracy']*100 for r in analysis['rows']],
+                   s=45, marker='s', color='#D55E00', label='Haar LL: four measured levels')
+        for row in analysis['rows']:
+            ax.annotate(f'L{row["level"]}', (row['retained_dimension'], row['validation_accuracy']*100),
+                        xytext=(0, -15), textcoords='offset points', ha='center', fontsize=8)
+        ax.axhline(baseline['validation_accuracy']*100, color='#555555', ls='--', lw=1,
+                   label=f'Unreduced 10,304D: {baseline["validation_accuracy"]:.0%}')
+        ax.scatter([10304], [baseline['validation_accuracy']*100], marker='x', color='#555555', s=45)
+        ticks = [1, 10, 42, 168, 644, 2576, 10304]
+        ax.set(xscale='log', xlabel='Retained features (log scale; method grids differ)',
+               ylabel='Validation accuracy (%)', xlim=(.8, 14000), ylim=(0, 104),
+               title='Haar LL and PCA • ORL validation (n=80) • Euclidean 1-NN')
+        ax.set_xticks(ticks, labels=[f'{d:,}' for d in ticks])
+        ax.minorticks_off()
+        ax.grid(axis='y', alpha=.2)
+        ax.set_axisbelow(True)
+        ax.legend(loc='lower right', fontsize=8)
+        fig.savefig(output/'dwt_validation_accuracy.pdf', dpi=300)
+        plt.close(fig)
+
+        # Predetermined first training observation, independent of performance.
+        image = train['X'][0].reshape(112, 92)
+        fig, axes = plt.subplots(1, 5, figsize=(7.2, 2.7), layout='constrained')
+        for level, ax in enumerate(axes):
+            if level == 0:
+                display = image
+                title = 'Original\n112×92'
+            else:
+                raw = HaarDWT(level).approximation(train['X'][:1])[0]
+                display = raw / (2**level)
+                title = f'LL level {level}\n{raw.shape[0]}×{raw.shape[1]}'
+            ax.imshow(display, cmap='gray', vmin=0, vmax=1, interpolation='nearest',
+                      extent=(0, 92, 112, 0))
+            ax.set_title(title, fontsize=9)
+            ax.axis('off')
+        fig.suptitle(f'Haar multiresolution • {train["paths"][0]} • symmetric extension', fontsize=11)
+        fig.supxlabel('Common [0,1] display: LL / 2^level (display only). Classifier uses raw LL coefficients.', fontsize=8)
+        fig.savefig(output/'dwt_multiresolution.pdf', dpi=300)
+        plt.close(fig)
+
+
+def run_dwt(data_root=DEFAULT_ROOT, split_file=DEFAULT_OUTPUT/'split_indices.json',
+            output_dir=DEFAULT_EXPERIMENT_OUTPUT, previous_results=DEFAULT_OUTPUT):
+    from .ablations import read_validation_results
+    import pywt
+    root, output = Path(data_root).resolve(), Path(output_dir).resolve()
+    if output == root or root in output.parents:
+        raise ValueError('Output must be outside the source dataset')
+    split_bytes = Path(split_file).read_bytes()
+    previous_rows, summary = read_validation_results(previous_results)
+    if hashlib.sha256(split_bytes).hexdigest() != summary['split_sha256']:
+        raise ValueError('Saved partition differs from existing validation experiments')
+    parts = load_partitions(root, split_file, names=('train', 'validation'))
+    analysis = evaluate_dwt(parts['train'], parts['validation'], summary)
+    if Path(split_file).read_bytes() != split_bytes:
+        raise RuntimeError('DWT extension changed the saved partition')
+    results = output/'results'
+    results.mkdir(parents=True, exist_ok=True)
+    with (results/'dwt_validation_results.csv').open('w', newline='', encoding='utf-8') as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(analysis['rows'][0]))
+        writer.writeheader()
+        writer.writerows(analysis['rows'])
+    plot_dwt(analysis, previous_rows, parts['train'], output/'figures')
+    print(f'PyWavelets runtime {pywt.__version__} (distribution {version("PyWavelets")}); '
+          'Haar, symmetric extension; LL only, no feature rescaling.')
+    return analysis
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-root', type=Path, default=DEFAULT_ROOT)
     parser.add_argument('--split-file', type=Path, default=DEFAULT_OUTPUT / 'split_indices.json')
     parser.add_argument('--output-dir', type=Path, default=DEFAULT_EXPERIMENT_OUTPUT)
-    parser.add_argument('--spca', action='store_true', help='Run only the supervised-PCA extension and its PCA control')
-    parser.add_argument('--previous-results', type=Path, default=DEFAULT_OUTPUT, help='Prior saved validation results for --spca')
+    extension = parser.add_mutually_exclusive_group()
+    extension.add_argument('--spca', action='store_true', help='Run only the supervised-PCA extension and its PCA control')
+    extension.add_argument('--dwt', action='store_true', help='Run only the four fixed Haar-LL configurations')
+    parser.add_argument('--previous-results', type=Path, default=DEFAULT_OUTPUT, help='Saved validation results for extensions')
     args = parser.parse_args()
-    if args.spca:
+    if args.dwt:
+        run_dwt(args.data_root, args.split_file, args.output_dir, args.previous_results)
+    elif args.spca:
         run_spca(args.data_root, args.split_file, args.output_dir, args.previous_results)
     else:
         run(args.data_root, args.split_file, args.output_dir)

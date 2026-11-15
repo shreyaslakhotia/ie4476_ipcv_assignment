@@ -1,0 +1,5 @@
+level,wavelet,boundary_mode,pywavelets_runtime_version,pywavelets_distribution_version,ll_height,ll_width,retained_dimension,feature_reduction_fraction,validation_accuracy,error_rate,n_correct,n_validation,prediction_sha256
+1,haar,symmetric,1.8.0,1.10.0,56,46,2576,0.75,0.95,0.05,76,80,8c42f813d46d10a289c21b3e3a8f4bceedf9510df73b28880a8504263d5c5d42
+2,haar,symmetric,1.8.0,1.10.0,28,23,644,0.9375,0.975,0.025,78,80,1457a66fb9f0e593ec1d7ff5555d355b8beb8f09136e2e0f7b44525730302bd2
+3,haar,symmetric,1.8.0,1.10.0,14,12,168,0.9836956521739131,0.975,0.025,78,80,1457a66fb9f0e593ec1d7ff5555d355b8beb8f09136e2e0f7b44525730302bd2
+4,haar,symmetric,1.8.0,1.10.0,7,6,42,0.9959239130434783,0.95,0.05,76,80,d8bbd66671960866f1ce17d7ecba84f6728f376368f2a5cb86cf1d853d773044
