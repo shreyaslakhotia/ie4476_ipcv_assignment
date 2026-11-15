@@ -1,0 +1,18 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Frozen configurations: validation selection and one-time held-out test accuracy. All models use only 240 training images; each evaluation partition contains 80 images.}
+\label{tab:final-test}
+\begin{tabular}{lrrrr}
+\hline
+Method & Features & Validation (\%) & Test (\%) & Test correct \\
+\hline
+Unreduced & 10,304 & 95.00 & 96.25 & 77/80 \\
+PCA & 50 & 98.75 & 97.50 & 78/80 \\
+Direct ridge LDA & 39 & 97.50 & 98.75 & 79/80 \\
+PCA$\rightarrow$LDA & 39 & 97.50 & 98.75 & 79/80 \\
+SPCA & 50 & 98.75 & 96.25 & 77/80 \\
+Haar DWT & 168 & 97.50 & 97.50 & 78/80 \\
+\hline
+\end{tabular}
+\end{table}

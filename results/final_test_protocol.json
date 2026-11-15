@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "frozen_at_utc": "2026-11-15T10:38:00.042845+00:00",
+  "configurations": [
+    {
+      "method": "Unreduced",
+      "configuration": "Original pixels",
+      "d": 10304,
+      "validation_correct": 76
+    },
+    {
+      "method": "PCA",
+      "configuration": "d=50",
+      "d": 50,
+      "validation_correct": 79
+    },
+    {
+      "method": "Direct ridge LDA",
+      "configuration": "d=39; ridge=0.001",
+      "d": 39,
+      "ridge": 0.001,
+      "validation_correct": 78
+    },
+    {
+      "method": "PCA→LDA",
+      "configuration": "m=40; d=39; ridge=0",
+      "m": 40,
+      "d": 39,
+      "ridge": 0,
+      "validation_correct": 78
+    },
+    {
+      "method": "SPCA",
+      "configuration": "eta=2; d=50",
+      "eta": 2,
+      "d": 50,
+      "validation_correct": 79
+    },
+    {
+      "method": "Haar DWT",
+      "configuration": "level=3; LL; mode=symmetric",
+      "level": 3,
+      "d": 168,
+      "validation_correct": 78
+    }
+  ],
+  "training_count": 240,
+  "validation_count": 80,
+  "test_count": 80,
+  "preprocessing": "uint8 grayscale; row-major flatten; float32 / 255",
+  "classifier": "Euclidean 1-NN; float64 distances; first training row breaks ties",
+  "fit_partition": "train only; no training/validation refit",
+  "selection": "Existing validation results only; no post-test selection",
+  "selection_ties": "Highest validation correct count, then smaller dimension; PCA→LDA: smaller m; SPCA: smaller d then eta, restricted to eta>1",
+  "source_sha256": {
+    "validation_results.csv": "7126e16db438ee6bda59a706d122dfd846a19d85baa752180fb7423c174108db",
+    "pcalda_intermediate_ablation.csv": "9009156ef953debfd72b516d3a826d6560a151e4302ad1c96edccd4f3b93d939",
+    "spca_validation_results.csv": "2e785c6b66eac682c9214d4acc4ed1afcac85881ae1e21b2d609d5b4ecd79927",
+    "dwt_validation_results.csv": "fd552c07b39df11225f4391198c7c6a560d27d5b8ebecef31afa7c83a221c8ce",
+    "experiment_summary.json": "eaa3a8c1d02a49cf28dc9ba118527a09fde16867d9e7309622220c956a146f46",
+    "split_indices.json": "211895097e75b3d79f5bc61e5314855563fa1b658ef39d0911f499a7feb409ba"
+  },
+  "code_sha256": {
+    "__init__.py": "174d0f989d03e9cbc9db0b42e87e1364fa946220301bfe6244f79dbaffee704b",
+    "ablations.py": "63b7ccc1f4408107d67d3485042fce1a4d8263bee534f210f33758915025b319",
+    "classification.py": "efe24fdd6daeabfcafb1b2474b01da04de3c3fe04217f0818c28e638b29dc3de",
+    "data.py": "7cd559cc5cdc96b75b0018aa3e1f87116eed025c66259208a2de032679c539b1",
+    "dimensionality_reduction.py": "873154217d73f87a50d4b820ca1d3df8494be1880a095a30a2ca799bc6018b6b",
+    "error_analysis.py": "af9f772cc47483e23107ea148e0df3a29f55a6ad641b783ba0e98c012ab08feb",
+    "experiments.py": "ac4e9564896610c24866db7b967501dd61163111184889252ac2fd711c1945b4",
+    "figures.py": "a221cde8685d18586ace54f70cf5e49d244021cee430674f9533d031dff7a578",
+    "final_evaluation.py": "4e14ce350bdc14f2195ff7931731b9ce0ebbdf6d7b31afdf477b1babf5b8cc9b",
+    "partition.py": "3937b409971052eaa0c4298c3b94fa148d8d6503c12cf0efbf11aa0c666e5264",
+    "preprocessing.py": "3f0a098f82d7f3f4cbe27f9c996ea10937e6efc07b18654156e06758623a6384",
+    "wavelets.py": "07ca0ad4e30a71aa55579fbffe6a29012ed9bd2fd9a1f1365ac03a8f0245fdfb"
+  },
+  "training_features_sha256": "3f2157b3923bc5c4e661b9b9c6d264014e872f7e6d620ebe5caaa536697df33a"
+}

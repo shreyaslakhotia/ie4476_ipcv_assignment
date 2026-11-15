@@ -8,7 +8,7 @@ Does reducing image dimensionality improve face-identification accuracy? This pr
 
 The ORL/AT&T Face Database contains **400 grayscale images of 40 subjects**, each at 112×92 pixels. Images are scaled to [0,1] and flattened into 10,304 features.
 
-A fixed, identity-stratified split uses **240 training, 80 validation and 80 test images**. All learned transformations use training data only; validation selects configurations. **The test set has not been evaluated.** The task is identification of known subjects.
+A fixed, identity-stratified split uses **240 training, 80 validation and 80 test images**. All learned transformations use training data only; validation selects configurations. The frozen configurations have now been evaluated once on the held-out test set, without adding validation to training. The task is identification of known subjects.
 
 ## Validation results
 
@@ -23,9 +23,11 @@ A fixed, identity-stratified split uses **240 training, 80 validation and 80 tes
 
 PCA achieves the highest observed accuracy with substantially fewer features. Retaining more variance does not necessarily improve identification. PCA→LDA is sensitive to its intermediate dimension: m=200 gives only 45.00%, alongside much poorer within-class scatter conditioning.
 
-Our SPCA is the specified multiclass weighted-covariance variant **Sw + ηSb**, not an exact reproduction of Jiang’s complete research algorithms. **η=1 is the ordinary-PCA equivalence control.** The best genuinely supervised setting, η=2, matches PCA’s predictions rather than improving them.
+Our SPCA is the specified multiclass weighted-covariance variant **Sw + ηSb**, not an exact reproduction of Jiang’s complete research algorithms. **η=1 is the ordinary-PCA equivalence control.** The best genuinely supervised setting, η=2, matches PCA’s validation predictions rather than improving them.
 
 These are validation-selected findings on a small dataset. One image changes accuracy by 1.25 percentage points; PCA’s three-image gain over the baseline is not statistically conclusive (exploratory exact McNemar p=0.25).
+
+**Final held-out results:** direct ridge LDA and PCA→LDA tie at **98.75% (79/80)**; PCA and Haar DWT achieve 97.50% (78/80); unreduced pixels and SPCA achieve 96.25% (77/80). These small differences do not establish statistical superiority. See the [final findings](results/final_test_findings.md), [CSV](results/final_test_results.csv) and [report-ready LaTeX table](results/final_test_table.tex). Regenerate these from saved predictions with `python -B -m src.final_evaluation --render-only`; repeat test evaluation is blocked.
 
 ## Repository
 

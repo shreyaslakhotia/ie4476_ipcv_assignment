@@ -1,0 +1,7 @@
+method,configuration,feature_dimensionality,test_accuracy,error_rate,n_correct,n_incorrect,n_test
+Unreduced,Original pixels,10304,0.9625,0.0375,77,3,80
+PCA,d=50,50,0.975,0.025,78,2,80
+Direct ridge LDA,d=39; ridge=0.001,39,0.9875,0.0125,79,1,80
+PCA→LDA,m=40; d=39; ridge=0,39,0.9875,0.0125,79,1,80
+SPCA,eta=2; d=50,50,0.9625,0.0375,77,3,80
+Haar DWT,level=3; LL; mode=symmetric,168,0.975,0.025,78,2,80
